@@ -1,7 +1,7 @@
 
 ---
 
-#RADP
+# RADP
 
 This project demonstrates how to import data from a CSV file into a PostgreSQL database using Python. The project focuses on creating a table in PostgreSQL to store product orders and then importing data from a CSV file into the table. 
 
