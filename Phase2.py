@@ -1,7 +1,8 @@
 import os
 from dotenv import load_dotenv
 import psycopg2
-import csv
+import pandas as pd
+from sqlalchemy import create_engine
 
 # Load the .env file
 load_dotenv()
@@ -30,117 +31,28 @@ except Exception as e:
 # Create a cursor to execute queries
 cursor = conn.cursor()
 
-# Check PostgreSQL version
-cursor.execute("SELECT version();")
-db_version = cursor.fetchone()
-print(f"Connected to - {db_version}")
+# Read the CSV file into a DataFrame
+df = pd.read_csv('sales_data.csv')
 
-# Drop existing 'orders' table (if exists)
-print("Dropping 'orders' table if it exists...")
-cursor.execute('''
-    DROP TABLE IF EXISTS orders;
-''')
-conn.commit()
+# PostgreSQL connection details
+db_config = {
+    'username': db_user,
+    'password': db_password,
+    'host': db_host,
+    'port': db_port,
+    'database': db_name
+}
 
-# Create 'orders' table based on CSV structure
-print("Creating 'orders' table...")
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS orders (
-        order_id SERIAL PRIMARY KEY,
-        product_id INT,
-        customer_id INT,
-        quantity INT,
-        price DECIMAL(10, 2),
-        order_date DATE
-    );
-''')
-conn.commit()
+# Create a connection string
+connection_string = f"postgresql://{db_config['username']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['database']}"
 
-# Import data from CSV into the 'orders' table
-csv_file_path = 'MOCK_DATA.csv'
-print(f"Reading data from {csv_file_path}...")
-try:
-    with open(csv_file_path, mode='r') as file:
-        csv_reader = csv.reader(file)
-        next(csv_reader)  # Skip the header row
-        for row in csv_reader:
-            print(f"Inserting row: {row}")
-            cursor.execute('''
-                INSERT INTO orders (product_id, customer_id, quantity, price, order_date)
-                VALUES (%s, %s, %s, %s, %s)
-            ''', (int(row[0]), int(row[1]), int(row[2]), float(row[3]), row[4]))
-    conn.commit()
-    print("Data successfully inserted from CSV.")
-except Exception as e:
-    print(f"Error reading or inserting data from CSV: {e}")
+# Create an SQLAlchemy engine
+engine = create_engine(connection_string)
 
-# Example 1: Aggregation - Calculate total revenue from all orders
-try:
-    print("Calculating total revenue...")
-    cursor.execute('''
-        SELECT SUM(price * quantity) AS total_revenue
-        FROM orders;
-    ''')
-    total_revenue = cursor.fetchone()[0]
-    print(f"Total Revenue: {total_revenue}")
-except Exception as e:
-    print(f"Error calculating total revenue: {e}")
+# Load data into the sales table
+df.to_sql('sales', engine, index=False, if_exists='replace')
 
-# Example 2: Window Function - Rank orders by total price
-try:
-    print("Ranking orders by total price...")
-    cursor.execute('''
-        SELECT product_id, customer_id, quantity, price, 
-               RANK() OVER (ORDER BY (price * quantity) DESC) AS rank
-        FROM orders;
-    ''')
-    ranked_orders = cursor.fetchall()
-    print("\nRanked Orders by Total Price:")
-    for order in ranked_orders:
-        print(order)
-except Exception as e:
-    print(f"Error ranking orders: {e}")
-
-# Example 3: Join - Assuming we have a customers table, join orders with customers
-# Create 'customers' table
-print("Creating 'customers' table...")
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS customers (
-        id SERIAL PRIMARY KEY, -- Use 'id' to match the customer_id in the 'orders' table
-        name VARCHAR(100),
-        email VARCHAR(100)
-    );
-''')
-conn.commit()
-
-# Insert some dummy customer data
-print("Inserting dummy customer data...")
-cursor.execute('''
-    INSERT INTO customers (name, email)
-    VALUES
-    ('Alice', 'alice@example.com'),
-    ('Bob', 'bob@example.com'),
-    ('Charlie', 'charlie@example.com'),
-    ('David', 'david@example.com'),
-    ('Eve', 'eve@example.com')
-    ON CONFLICT DO NOTHING;
-''')
-conn.commit()
-
-# Join customers and orders tables to show customer orders
-try:
-    print("Joining customers and orders tables...")
-    cursor.execute('''
-        SELECT customers.name, orders.product_id, orders.quantity, orders.price, orders.order_date
-        FROM orders
-        JOIN customers ON customers.id = orders.customer_id;
-    ''')
-    customer_orders = cursor.fetchall()
-    print("\nCustomer Orders:")
-    for order in customer_orders:
-        print(order)
-except Exception as e:
-    print(f"Error joining customers and orders: {e}")
+print("Data loaded successfully!")
 
 # Close cursor and connection
 cursor.close()
