@@ -35,25 +35,29 @@ cursor = conn.cursor()
 # Read the CSV file into a DataFrame
 df = pd.read_csv('sales_data.csv')
 
-# Initial data preview
-print("initial data preview: ")
-print(df.head())
+# Initial data preview before cleaning
+print("\nInitial Data Preview (Before Cleaning):")
+print(df.head())  # Show the first 5 rows before cleaning
 
 # Data Cleaning
-df['product'] = df['product'].replace('', np.nan)
-df['quantity'] = df['quantity'].fillna(df['quantity'].median())
-df['price'] = df['price'].fillna(df['price'].mean())
-df['region'] = df['region'].replace('', np.nan)
-df = df.dropna(subset=['region'])
-df['sale_date'] = df['sale_date'].fillna('1970-01-01')
+df['product'] = df['product'].replace('', np.nan)  # Replace empty product names with NaN
+df['quantity'] = df['quantity'].fillna(df['quantity'].median())  # Fill missing quantities with median value
+df['price'] = df['price'].fillna(df['price'].mean())  # Fill missing prices with mean value
+df['region'] = df['region'].replace('', np.nan)  # Replace empty regions with NaN
+df = df.dropna(subset=['region'])  # Drop rows with NaN in 'region'
+df['sale_date'] = df['sale_date'].fillna('1970-01-01')  # Fill missing dates with a default date
 
 # Remove duplicates
 df = df.drop_duplicates()
 
 # Convert data types
-df['quantity'] = df['quantity'].astype(int)
-df['price'] = df['price'].astype(float)
-df['sale_date'] = pd.to_datetime(df['sale_date'], errors='coerce')
+df['quantity'] = df['quantity'].astype(int)  # Convert quantity to integer
+df['price'] = df['price'].astype(float)  # Convert price to float
+df['sale_date'] = pd.to_datetime(df['sale_date'], errors='coerce')  # Convert sale_date to datetime
+
+# Data preview after cleaning
+print("\nData Preview (After Cleaning):")
+print(df.head())  # Show the first 5 rows after cleaning
 
 # Save cleaned data to CSV
 df.to_csv('cleaned_sales_data.csv', index=False)
