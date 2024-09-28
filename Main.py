@@ -35,8 +35,6 @@ cursor = conn.cursor()
 # Read the CSV file into a DataFrame
 df = pd.read_csv('sales_data.csv')
 
-
-
 # Close cursor and connection
 cursor.close()
 conn.close()
